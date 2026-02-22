@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -27,21 +28,56 @@ public class BackgroundVideoPlayer : MonoBehaviour
 
     private void Awake()
     {
-        string videosDirectory = Path.Combine(Application.streamingAssetsPath, "BackgroundVideos");
-        if (!Directory.Exists(videosDirectory))
-            return;
-
-        videos = Directory
-            .GetFiles(videosDirectory)
-            .Where(path => SupportedExtensions.Contains(Path.GetExtension(path).ToLowerInvariant()))
-            .OrderBy(path => path)
-            .ToArray();
+        videos = FindVideos();
 
         if (videos.Length == 0)
+        {
+            Debug.LogWarning("BackgroundVideoPlayer: no videos found. Check StreamingAssets/BackgroundVideos or build folder paths.");
             return;
+        }
 
         InitializeComponents();
         StartCoroutine(WaitForCameraAndPlay());
+    }
+
+    private string[] FindVideos()
+    {
+        foreach (string directory in GetCandidateDirectories())
+        {
+            if (!Directory.Exists(directory))
+                continue;
+
+            string[] found = Directory
+                .GetFiles(directory)
+                .Where(path => SupportedExtensions.Contains(Path.GetExtension(path).ToLowerInvariant()))
+                .OrderBy(path => path)
+                .ToArray();
+
+            if (found.Length > 0)
+            {
+                Debug.Log($"BackgroundVideoPlayer: using videos from {directory}");
+                return found;
+            }
+        }
+
+        return Array.Empty<string>();
+    }
+
+    private IEnumerable<string> GetCandidateDirectories()
+    {
+        yield return Path.Combine(Application.streamingAssetsPath, "BackgroundVideos");
+
+        string dataPath = Application.dataPath;
+        if (!string.IsNullOrEmpty(dataPath))
+        {
+            string executableDirectory = Path.GetDirectoryName(dataPath);
+            if (!string.IsNullOrEmpty(executableDirectory))
+            {
+                yield return Path.Combine(executableDirectory, "BackgroundVideos");
+                yield return Path.Combine(executableDirectory, "StreamingAssets", "BackgroundVideos");
+                yield return Path.Combine(executableDirectory, "CubeFortress_Data", "StreamingAssets", "BackgroundVideos");
+            }
+        }
     }
 
     private IEnumerator WaitForCameraAndPlay()
