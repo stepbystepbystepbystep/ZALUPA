@@ -82,11 +82,34 @@ public class BackgroundVideoPlayer : MonoBehaviour
 
     private IEnumerator WaitForCameraAndPlay()
     {
-        while (Camera.main == null)
+        Camera targetCamera = null;
+        while (targetCamera == null)
+        {
+            targetCamera = GetTargetCamera();
             yield return null;
+        }
 
-        videoPlayer.targetCamera = Camera.main;
+        videoPlayer.targetCamera = targetCamera;
+        videoPlayer.targetCameraAlpha = 1f;
         StartPlayback(0);
+    }
+
+    private Camera GetTargetCamera()
+    {
+        if (Camera.main != null)
+            return Camera.main;
+
+        Camera[] allCameras = Camera.allCameras;
+        if (allCameras == null || allCameras.Length == 0)
+            return null;
+
+        foreach (Camera cam in allCameras)
+        {
+            if (cam != null && cam.isActiveAndEnabled)
+                return cam;
+        }
+
+        return allCameras[0];
     }
 
     private void InitializeComponents()
